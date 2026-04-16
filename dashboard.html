@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenCode Token 使用报告</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-card: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --accent-blue: #3b82f6;
+            --accent-green: #22c55e;
+            --accent-purple: #a855f7;
+            --accent-orange: #f97316;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 12px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 16px;
+            background: linear-gradient(135deg, var(--bg-secondary), var(--bg-card));
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 6px;
+        }
+        .header p { color: var(--text-secondary); font-size: 0.8rem; margin-bottom: 10px; }
+        .btn {
+            background: var(--accent-blue);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+        .btn:hover { background: #2563eb; }
+        .instructions {
+            background: rgba(59,130,246,0.1);
+            border: 1px solid var(--accent-blue);
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-top: 10px;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-align: left;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: var(--bg-secondary);
+            border-radius: 10px;
+            padding: 14px;
+            border: 1px solid rgba(255,255,255,0.05);
+            min-width: 0;
+        }
+        .stat-card .label { font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .stat-card .value { font-size: 1.3rem; font-weight: 700; word-break: break-all; }
+        .stat-card .sub { font-size: 0.7rem; color: var(--text-secondary); margin-top: 4px; }
+        .cost-positive { color: var(--accent-green); }
+        .stat-card.full-width { grid-column: span 2; }
+
+        .efficiency-section {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .section-title { font-size: 1rem; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .section-title::before { content: ''; width: 4px; height: 16px; background: var(--accent-purple); border-radius: 2px; }
+        .efficiency-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            align-items: start;
+        }
+        #efficiency-ranking { font-size: 0.8rem; }
+        .eff-item { display: flex; align-items: center; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05); flex-wrap: wrap; }
+        .eff-item:last-child { border-bottom: none; }
+        .eff-rank { width: 20px; font-weight: 700; color: var(--accent-orange); flex-shrink: 0; }
+        .eff-name { flex: 1; font-weight: 500; min-width: 80px; font-size: 0.75rem; }
+        .eff-ratio { font-weight: 600; flex-shrink: 0; }
+        .eff-cost { color: var(--text-secondary); font-size: 0.7rem; flex-shrink: 0; margin-left: 6px; }
+        .efficiency-chart { position: relative; height: 250px; min-width: 0; }
+
+        .charts-container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .chart-card {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 16px;
+            border: 1px solid rgba(255,255,255,0.05);
+            min-width: 0;
+            overflow: hidden;
+        }
+        .chart-title { font-size: 0.95rem; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .chart-title::before { content: ''; width: 4px; height: 16px; background: var(--accent-blue); border-radius: 2px; }
+        .chart-wrapper { position: relative; height: 220px; min-width: 0; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 0.8rem; }
+        th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        th { background: var(--bg-card); font-weight: 600; font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; }
+        tr:hover { background: rgba(255,255,255,0.02); }
+        td { font-size: 0.75rem; }
+        .model-badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.65rem; font-weight: 600; background: var(--accent-blue); white-space: nowrap; }
+        .table-scroll { max-height: 300px; overflow-y: auto; }
+
+        .footer { text-align: center; padding: 16px; color: var(--text-secondary); font-size: 0.8rem; }
+        .error { background: rgba(239,68,68,0.2); border: 1px solid #ef4444; border-radius: 8px; padding: 16px; text-align: center; margin-bottom: 16px; color: #ef4444; }
+
+        @media (max-width: 600px) {
+            .stats-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+            .stat-card { padding: 10px; }
+            .stat-card .value { font-size: 1.1rem; }
+            .stat-card.full-width { grid-column: span 2; }
+            .efficiency-layout { grid-template-columns: 1fr; gap: 12px; }
+            .efficiency-chart { height: 200px; }
+            .chart-wrapper { height: 180px; }
+            .header h1 { font-size: 1.2rem; }
+            .header { padding: 12px; }
+        }
+        @media (min-width: 900px) {
+            .stats-grid { grid-template-columns: repeat(4, 1fr); }
+            .stat-card.full-width { grid-column: span 1; }
+            .charts-container { grid-template-columns: repeat(2, 1fr); }
+            .chart-card:first-child { grid-column: span 2; }
+            .chart-wrapper { height: 280px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📊 OpenCode Token 使用报告</h1>
+        <p id="status">加载中...</p>
+        <button class="btn" onclick="location.reload()">🔄 刷新页面</button>
+        <div class="instructions">
+            <strong>⚠️ 重要：必须使用 HTTP 服务器打开此文件</strong><br>
+            方法 1（推荐）：VS Code Live Server<br>
+            方法 2：GitHub Pages<br>
+            方法 3：双击运行「刷新数据.command」
+        </div>
+    </div>
+
+    <div id="error-box" style="display:none;" class="error"></div>
+
+    <div class="stats-grid">
+        <div class="stat-card"><div class="label">总 Token</div><div class="value" id="total-tokens">-</div><div class="sub" id="date-range">-</div></div>
+        <div class="stat-card"><div class="label">总成本</div><div class="value cost-positive" id="total-cost">-</div><div class="sub" id="total-cost-rmb">-</div></div>
+        <div class="stat-card"><div class="label">消息数</div><div class="value" id="total-messages">-</div><div class="sub">活跃 <span id="active-days">-</span> 天</div></div>
+        <div class="stat-card"><div class="label">日均 Token</div><div class="value" id="daily-avg">-</div><div class="sub">月消耗 <span class="cost-positive" id="monthly-est">-</span></div></div>
+    </div>
+
+    <div class="efficiency-section">
+        <div class="section-title">📊 Provider 性价比排行</div>
+        <div class="efficiency-layout">
+            <div id="efficiency-ranking"></div>
+            <div class="efficiency-chart"><canvas id="efficiencyChart"></canvas></div>
+        </div>
+    </div>
+
+    <div class="charts-container">
+        <div class="chart-card">
+            <div class="chart-title">每日 Token 消耗趋势</div>
+            <div class="chart-wrapper"><canvas id="dailyTrendChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-title">模型 Token 占比</div>
+            <div class="chart-wrapper"><canvas id="modelPieChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-title">Provider Token 占比</div>
+            <div class="chart-wrapper"><canvas id="providerTokenPieChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-title">Provider 成本分布</div>
+            <div class="chart-wrapper"><canvas id="costPieChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-title">Provider Token vs 费用 对比</div>
+            <div class="chart-wrapper"><canvas id="providerCompareChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-title">堆叠每日消耗（按模型）</div>
+            <div class="chart-wrapper"><canvas id="modelStackedChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-title">详细数据表格</div>
+            <div class="table-scroll">
+                <table id="detailTable"><thead><tr><th>日期</th><th>模型</th><th>Provider</th><th>Total</th><th>Cost</th></tr></thead><tbody></tbody></table>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer"><p>OpenCode Token Tracker</p></div>
+
+    <script>
+        var charts = {};
+
+        function formatNumber(num) {
+            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+            return num.toString();
+        }
+
+        function destroyCharts() {
+            Object.keys(charts).forEach(function(key) { if (charts[key]) charts[key].destroy(); });
+            charts = {};
+        }
+
+        function renderDashboard(data) {
+            var summary = data.summary;
+            var dailyTotals = data.daily_totals;
+            var modelTotals = data.model_totals;
+            var providerCosts = data.provider_costs;
+            var rawData = data.raw_data;
+            var providerTotals = data.provider_totals || {};
+            var dates = Object.keys(dailyTotals).sort();
+
+            document.getElementById('total-tokens').textContent = formatNumber(summary.total_tokens);
+            document.getElementById('date-range').textContent = summary.date_range.start + ' ~ ' + summary.date_range.end;
+            var totalCostUSD = summary.total_cost;
+            var totalCostRMB = totalCostUSD * 7.2;
+            document.getElementById('total-cost').textContent = '$' + totalCostUSD.toFixed(2);
+            document.getElementById('total-cost-rmb').textContent = '约 ¥' + totalCostRMB.toFixed(0);
+            document.getElementById('total-messages').textContent = summary.total_messages.toLocaleString();
+            document.getElementById('active-days').textContent = summary.active_days;
+            var dailyAvgTokens = Math.round(summary.total_tokens / summary.active_days);
+            document.getElementById('daily-avg').textContent = formatNumber(dailyAvgTokens);
+            var dailyCost = summary.total_cost / summary.active_days;
+            var monthlyCostRMB = dailyCost * 30 * 7.2;
+            document.getElementById('monthly-est').textContent = '$' + (dailyCost * 30).toFixed(0) + ' ≈ ¥' + monthlyCostRMB.toFixed(0);
+            document.getElementById('status').textContent = '数据更新于: ' + new Date(summary.updated_at).toLocaleString('zh-CN');
+            document.getElementById('error-box').style.display = 'none';
+
+            var SUBSCRIPTION_COSTS = {
+                'minimax-cn-coding-plan': { usd: 29 / 7.2, original: 29, currency: 'RMB' },
+                'xiaomi-token-plan-cn': { usd: 34.9 / 7.2, original: 34.9, currency: 'RMB' },
+                'openai': { usd: 19.99, original: 19.99, currency: 'USD' },
+                'opencode-go': { usd: 10, original: 10, currency: 'USD' }
+            };
+            var CNY_TO_USD = 7.2;
+            var pvList = [];
+
+            if (providerTotals && Object.keys(providerTotals).length > 0) {
+                Object.keys(providerTotals).forEach(function(p) {
+                    var d = providerTotals[p];
+                    var total = d.total || 0;
+                    var actualCostUSD = d.cost || 0;
+                    var actualCostRMB = actualCostUSD * CNY_TO_USD;
+                    var subInfo = SUBSCRIPTION_COSTS[p];
+
+                    if (subInfo) {
+                        var ratio = total / subInfo.usd;
+                        var costDisplay = subInfo.currency === 'RMB' ? '¥' + subInfo.original : '$' + subInfo.usd.toFixed(2);
+                        pvList.push({ name: p, total: total, costUSD: subInfo.usd, costDisplay: costDisplay, ratio: ratio, isSubscription: true, mode: '订阅' });
+                    }
+                    if (actualCostUSD > 0) {
+                        var ratio2 = total / actualCostUSD;
+                        pvList.push({ name: p, total: total, costUSD: actualCostUSD, costDisplay: '$' + actualCostUSD.toFixed(0) + '/¥' + actualCostRMB.toFixed(0), ratio: ratio2, isSubscription: false, mode: '按量' });
+                    }
+                });
+                pvList.sort(function(a, b) { return b.ratio - a.ratio; });
+                var rankHtml = pvList.map(function(p, i) {
+                    var label = p.isSubscription ? '📌' : '';
+                    var modeTag = p.mode === '订阅' ? ' [订]' : ' [量]';
+                    var ratioStr = (p.ratio / 1000000).toFixed(1) + 'M/$';
+                    return '<div class="eff-item"><span class="eff-rank">' + (i+1) + '.</span><span class="eff-name">' + label + p.name + modeTag + '</span><span class="eff-ratio">' + ratioStr + '</span><span class="eff-cost">' + p.costDisplay + '</span></div>';
+                }).join('');
+                document.getElementById('efficiency-ranking').innerHTML = rankHtml;
+            }
+
+            Chart.defaults.color = '#94a3b8';
+            Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
+            Chart.defaults.font.size = 10;
+
+            destroyCharts();
+
+            if (pvList.length > 0) {
+                var effLabels = pvList.map(function(p) { return p.name + (p.mode === '订阅' ? '📌' : ''); });
+                var effData = pvList.map(function(p) { return p.ratio / 1000000; });
+                charts.efficiency = new Chart(document.getElementById('efficiencyChart'), {
+                    type: 'bar',
+                    data: { labels: effLabels, datasets: [{ data: effData, backgroundColor: ['#f97316','#22c55e','#a855f7','#ec4899','#06b6d4','#eab308','#ef4444','#3b82f6'] }] },
+                    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(ctx) { return ctx.raw.toFixed(1) + 'M/$'; } } } }, scales: { x: { ticks: { callback: function(v) { return v + 'M'; } }, grid: { color: 'rgba(255,255,255,0.05)' } }, y: { grid: { display: false } } } }
+                });
+            }
+
+            charts.dailyTrend = new Chart(document.getElementById('dailyTrendChart'), {
+                type: 'line',
+                data: { labels: dates, datasets: [{ label: '每日 Token', data: dates.map(function(d) { return dailyTotals[d]; }), borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', fill: true, tension: 0.4, pointRadius: 3, pointHoverRadius: 5 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(ctx) { return formatNumber(ctx.raw) + ' tokens'; } } } }, scales: { y: { ticks: { callback: function(v) { return formatNumber(v); } }, grid: { color: 'rgba(255,255,255,0.05)' } }, x: { grid: { display: false } } } }
+            });
+
+            var modelLabels = Object.keys(modelTotals).sort(function(a,b) { return modelTotals[b] - modelTotals[a]; });
+            var chartColors = ['#3b82f6','#22c55e','#a855f7','#f97316','#ec4899','#06b6d4','#eab308','#ef4444'];
+
+            charts.modelPie = new Chart(document.getElementById('modelPieChart'), {
+                type: 'doughnut',
+                data: { labels: modelLabels, datasets: [{ data: modelLabels.map(function(m) { return modelTotals[m]; }), backgroundColor: chartColors, borderWidth: 0 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 4, font: { size: 9 } } }, tooltip: { callbacks: { label: function(ctx) { return ctx.label + ': ' + formatNumber(ctx.raw); } } } } }
+            });
+
+            var providerLabels = Object.keys(providerCosts).sort(function(a,b) { return providerCosts[b] - providerCosts[a]; });
+            var providerColors = ['#f97316','#22c55e','#a855f7','#ec4899','#06b6d4','#eab308','#ef4444','#3b82f6'];
+
+            charts.costPie = new Chart(document.getElementById('costPieChart'), {
+                type: 'doughnut',
+                data: { labels: providerLabels, datasets: [{ data: providerLabels.map(function(p) { return providerCosts[p]; }), backgroundColor: providerColors, borderWidth: 0 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 4, font: { size: 9 } } }, tooltip: { callbacks: { label: function(ctx) { return ctx.label + ': $' + ctx.raw.toFixed(0); } } } } }
+            });
+
+            if (providerTotals && Object.keys(providerTotals).length > 0) {
+                var pvTokenLabels = Object.keys(providerTotals).sort(function(a,b) { return providerTotals[b].total - providerTotals[a].total; });
+
+                charts.providerTokenPie = new Chart(document.getElementById('providerTokenPieChart'), {
+                    type: 'doughnut',
+                    data: { labels: pvTokenLabels, datasets: [{ data: pvTokenLabels.map(function(p) { return providerTotals[p].total; }), backgroundColor: providerColors, borderWidth: 0 }] },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 4, font: { size: 9 } } }, tooltip: { callbacks: { label: function(ctx) { return ctx.label + ': ' + formatNumber(ctx.raw); } } } } }
+                });
+
+                charts.providerCompare = new Chart(document.getElementById('providerCompareChart'), {
+                    type: 'bar',
+                    data: { labels: pvTokenLabels, datasets: [
+                        { label: 'Token(M)', data: pvTokenLabels.map(function(p) { return (providerTotals[p].total / 1000000).toFixed(1); }), backgroundColor: 'rgba(59,130,246,0.8)', yAxisID: 'y' },
+                        { label: '$', data: pvTokenLabels.map(function(p) { return providerTotals[p].cost.toFixed(0); }), backgroundColor: 'rgba(249,115,22,0.8)', yAxisID: 'y1' }
+                    ] },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', labels: { boxWidth: 10, padding: 4, font: { size: 9 } } }, tooltip: { callbacks: { label: function(ctx) { return ctx.dataset.label + ': ' + ctx.raw; } } } }, scales: { y: { type: 'linear', position: 'left', grid: { color: 'rgba(255,255,255,0.05)' } }, y1: { type: 'linear', position: 'right', grid: { drawOnChartArea: false } }, x: { grid: { display: false } } } }
+                });
+            }
+
+            var topModels = modelLabels.slice(0, 6);
+            var stackedData = dates.map(function(date) {
+                var row = {};
+                topModels.forEach(function(model) {
+                    var entry = rawData.find(function(r) { return r.date === date && r.model === model; });
+                    row[model] = entry ? entry.total : 0;
+                });
+                return row;
+            });
+
+            charts.stacked = new Chart(document.getElementById('modelStackedChart'), {
+                type: 'bar',
+                data: { labels: dates, datasets: topModels.map(function(model, i) { return { label: model, data: stackedData.map(function(d) { return d[model] || 0; }), backgroundColor: chartColors[i % chartColors.length], stack: 'stack0' }; }) },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 8, padding: 3, font: { size: 8 } } }, tooltip: { callbacks: { label: function(ctx) { return ctx.dataset.label + ': ' + formatNumber(ctx.raw); } } } }, scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, ticks: { callback: function(v) { return formatNumber(v); } }, grid: { color: 'rgba(255,255,255,0.05)' } } } }
+            });
+
+            var tbody = document.querySelector('#detailTable tbody');
+            tbody.innerHTML = '';
+            rawData.sort(function(a,b) { return b.date.localeCompare(a.date) || b.total - a.total; }).slice(0, 50).forEach(function(row) {
+                var tr = document.createElement('tr');
+                tr.innerHTML = '<td>' + row.date + '</td><td><span class="model-badge">' + row.model + '</span></td><td>' + row.provider + '</td><td><strong>' + formatNumber(row.total) + '</strong></td><td class="' + (row.cost > 0 ? 'cost-positive' : '') + '">' + (row.cost > 0 ? '$' + row.cost.toFixed(2) : '-') + '</td>';
+                tbody.appendChild(tr);
+            });
+        }
+
+        function loadData() {
+            document.getElementById('status').textContent = '正在加载数据...';
+            fetch('data.json')
+                .then(function(response) { return response.json(); })
+                .then(function(data) { renderDashboard(data); })
+                .catch(function(err) {
+                    document.getElementById('error-box').style.display = 'block';
+                    document.getElementById('error-box').innerHTML = '<strong>❌ 数据加载失败</strong><br>请使用 VS Code Live Server 打开，或运行「刷新数据.command」';
+                    document.getElementById('status').textContent = '加载失败';
+                });
+        }
+
+        loadData();
+    </script>
+</body>
+</html>

@@ -1,0 +1,4 @@
+date,model,provider,input_tokens,output_tokens,reasoning_tokens,cache_read,cache_write,total_tokens,cost,message_count
+2026-04-15,minimax-m2.7,opencode-go,179443,124268,0,16796578,1495773,18596062.0,1.21074918,216
+2026-04-15,MiniMax-M2.7,minimax-cn-coding-plan,1359397,79743,0,13205486,291428,14936054.0,0.0,185
+2026-04-15,claude-haiku-4-5,opencode,14,2753,0,56577,65098,124442.0,0.1008092,3
